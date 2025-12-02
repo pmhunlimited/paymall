@@ -1,6 +1,10 @@
 <?php
-session_start();
-require_once __DIR__ . '/../includes/auth.php';
+// admin/login.php
+
+// These must be included first in this order.
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/settings.php';
+require_once __DIR__ . '/../includes/functions.php';
 
 // Redirect if already logged in as admin
 if (auth()->isLoggedIn() && ($_SESSION['is_admin'] ?? false)) {
@@ -18,11 +22,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Username and password are required.";
     } else {
         $result = auth()->login($username, $password);
-        if ($result['success'] && $_SESSION['is_admin']) {
+        if ($result['success'] && ($_SESSION['is_admin'] ?? false)) {
             header("Location: index.php");
             exit();
         } else {
-            $error = $result['message'] ?? "Invalid credentials.";
+            // Provide a generic error to avoid user enumeration
+            $error = "Invalid credentials or not an administrator.";
         }
     }
 }
@@ -34,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login — <?= htmlspecialchars(setting('site_name', 'VTU Fintech')) ?></title>
+    <link rel="stylesheet" href="../assets/css/main.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }

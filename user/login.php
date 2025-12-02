@@ -1,5 +1,9 @@
 <?php
-session_start();
+// user/login.php
+
+// These must be included first in this order.
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/settings.php';
 require_once __DIR__ . '/../includes/functions.php';
 
 // Redirect if already logged in
@@ -28,13 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — <?= htmlspecialchars(setting('site_name', 'VTU Fintech')) ?></title>
+    <link rel="stylesheet" href="../assets/css/main.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
