@@ -19,6 +19,7 @@ foreach ($required_extensions as $ext) {
 
 if (empty($errors)) {
     // All checks passed, proceed to stage 2
+    $_SESSION['stage1_passed'] = true;
     header("Location: stage2.php");
     exit();
 } else {
