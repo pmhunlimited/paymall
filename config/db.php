@@ -60,7 +60,7 @@ class Database {
 
     // Prevent cloning
     private function __clone() {}
-    private function __wakeup() {}
+    public function __wakeup() {}
 }
 
 // Helper function for quick access
