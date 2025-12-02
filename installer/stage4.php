@@ -1,5 +1,8 @@
 <?php
+session_start();
 // In installer/stage4.php - REPLACE the config generation section
+
+$db = $_SESSION['db_config'] ?? [];
 
 // === Generate config/app.php ===
 $config_content = "<?php\n";
