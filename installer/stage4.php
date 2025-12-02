@@ -59,6 +59,13 @@ if (file_put_contents($dotenv_path, $dotenv_content) !== false) {
 } else {
     $env_created = false;
 }
+
+// === Finalize Installation ===
+// Create a .installed lock file to prevent re-running the installer
+file_put_contents(__DIR__ . '/.installed', 'Installation completed on ' . date('Y-m-d H:i:s'));
+
+// Clear the session to allow for a fresh start if needed
+session_destroy();
 ?>
 
 <!-- In the success HTML section -->
