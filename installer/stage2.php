@@ -1,0 +1,236 @@
+<?php
+session_start();
+
+// Prevent direct access if stage1 not completed
+if (!isset($_SESSION['stage1_passed']) || !$_SESSION['stage1_passed']) {
+    header("Location: stage1.php");
+    exit();
+}
+
+$error = '';
+$success = '';
+$preflight_warnings = [];
+
+// === 🔍 Pre-flight Checks ===
+$directories_to_check = [
+    '../config/',
+    '../logs/',
+    '../storage/',
+    '../uploads/'
+];
+
+foreach ($directories_to_check as $dir) {
+    $full_path = __DIR__ . '/' . $dir;
+    if (!is_dir($full_path)) {
+        @mkdir($full_path, 0755, true);
+    }
+    if (!is_writable($full_path)) {
+        $preflight_warnings[] = "⚠️ <code>{$dir}</code> is not writable. Please fix permissions.";
+    }
+}
+
+// === Handle Form Submission ===
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $host = trim($_POST['db_host'] ?? 'localhost');
+    $name = trim($_POST['db_name'] ?? '');
+    $user = trim($_POST['db_user'] ?? '');
+    $pass = $_POST['db_pass'] ?? '';
+    $prefix = trim($_POST['table_prefix'] ?? 'vtu_');
+
+    // Validate
+    if (empty($name) || empty($user)) {
+        $error = "Database name and username are required.";
+    } else {
+        try {
+            // Connect & create DB
+            $dsn = "mysql:host={$host};charset=utf8mb4";
+            $pdo = new PDO($dsn, $user, $pass, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
+            $pdo->exec("CREATE DATABASE IF NOT EXISTS `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $pdo->exec("USE `{$name}`");
+
+            // Load & process schema.sql
+            $schema_file = __DIR__ . '/schema.sql';
+            if (!file_exists($schema_file)) {
+                throw new Exception("schema.sql not found. Please check installer directory.");
+            }
+
+            $schema_sql = file_get_contents($schema_file);
+            $schema_sql = str_replace('{PREFIX}', $prefix, $schema_sql);
+            $pdo->exec($schema_sql);
+
+            // Insert default settings
+            $default_prices = json_encode([
+                'ME2U_NG_Data2Share_1621' => 597.00,
+                'ME2U_NG_Data2Share_1622' => 1060.00,
+                'ME2U_NG_Data2Share_1623' => 1365.00,
+                'ME2U_NG_Data2Share_2051' => 1975.00
+            ]);
+
+            $init_settings = [
+                ['site_name', 'VTU Fintech'],
+                ['mtn_api_key', ''],
+                ['flutterwave_public_key', ''],
+                ['flutterwave_secret_key', ''],
+                ['paystack_public_key', ''],
+                ['paystack_secret_key', ''],
+                ['data_plan_prices', $default_prices],
+                ['min_pin_length', '4'],
+                ['max_bulk_limit', '50'],
+                ['admin_email', '']
+            ];
+
+            $stmt = $pdo->prepare("INSERT INTO `{$prefix}admin_settings` (`setting_key`, `setting_value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`)");
+            foreach ($init_settings as [$key, $val]) {
+                $stmt->execute([$key, $val]);
+            }
+
+            // Save to session
+            $_SESSION['db_config'] = compact('host', 'name', 'user', 'pass', 'prefix');
+            $_SESSION['stage2_passed'] = true;
+
+            header("Location: stage3.php");
+            exit();
+
+        } catch (PDOException $e) {
+            $error = "Database error: " . htmlspecialchars($e->getMessage());
+        } catch (Exception $e) {
+            $error = "Installation failed: " . htmlspecialchars($e->getMessage());
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTU Installer — Stage 2: Database Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #4361ee; --success: #06d6a0; --warning: #ffd166; --danger: #ef476f; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: #333; padding: 1.5rem; }
+        .container { max-width: 700px; margin: 0 auto; }
+        
+        /* Progress Bar */
+        .progress { background: #e2e8f0; border-radius: 10px; height: 8px; margin-bottom: 2rem; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--primary); width: 50%; transition: width 0.4s ease; }
+        
+        .card { background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: #4361ee; color: white; padding: 1.5rem; text-align: center; }
+        .header h2 { font-weight: 600; font-size: 1.5rem; }
+        .step-indicator { display: flex; justify-content: center; gap: 1rem; margin-top: 0.5rem; font-size: 0.9rem; }
+        .step { width: 32px; height: 32px; border-radius: 50%; background: #5e72e4; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .step.done { background: var(--success); }
+        .step.current { background: white; color: var(--primary); }
+        
+        .content { padding: 2rem; }
+        
+        /* Alerts */
+        .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; }
+        .alert-warning { background: #fff8e6; color: #926a00; border-left: 4px solid #ffd166; }
+        .alert-error { background: #ffebee; color: #c62828; border-left: 4px solid #ef476f; }
+        .alert-success { background: #e8f5e9; color: #2e7d32; border-left: 4px solid var(--success); }
+        
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+        input { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 10px; font-size: 1rem; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2); }
+        
+        /* Buttons */
+        .btn-group { display: flex; gap: 1rem; margin-top: 1.5rem; }
+        .btn { padding: 0.8rem 1.5rem; border-radius: 10px; font-weight: 600; cursor: pointer; text-decoration: none; text-align: center; }
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-secondary { background: #6c757d; color: white; border: none; }
+        .btn:hover { opacity: 0.9; }
+        
+        .note { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        code { background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Progress Bar -->
+        <div class="progress">
+            <div class="progress-bar" style="width: 50%"></div>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step done">1</div>
+            <div class="step current">2</div>
+            <div class="step">3</div>
+            <div class="step">4</div>
+        </div>
+
+        <div class="card">
+            <div class="header">
+                <h2>Stage 2: Database Configuration</h2>
+                <p>Let’s connect to your MySQL database</p>
+            </div>
+            <div class="content">
+                <!-- Pre-flight Warnings -->
+                <?php if (!empty($preflight_warnings)): ?>
+                    <div class="alert alert-warning">
+                        <strong>Directory Permissions Warning:</strong>
+                        <ul style="margin-top: 0.5rem; margin-bottom: 0;">
+                            <?php foreach ($preflight_warnings as $warning): ?>
+                                <li><?= $warning ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <p style="margin-top: 0.75rem; font-size: 0.9rem;">
+                            The installer will try to create directories, but manual permission fixes may be needed.
+                        </p>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($error): ?>
+                    <div class="alert alert-error"><?= $error ?></div>
+                <?php endif; ?>
+                <?php if ($success): ?>
+                    <div class="alert alert-success"><?= $success ?></div>
+                <?php endif; ?>
+
+                <form method="POST">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="db_host">Database Host</label>
+                            <input type="text" id="db_host" name="db_host" value="localhost" required>
+                            <p class="note">Usually <code>localhost</code> or <code>127.0.0.1</code></p>
+                        </div>
+                        <div class="form-group">
+                            <label for="db_name">Database Name</label>
+                            <input type="text" id="db_name" name="db_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="db_user">Database Username</label>
+                            <input type="text" id="db_user" name="db_user" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="db_pass">Database Password</label>
+                            <input type="password" id="db_pass" name="db_pass">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="table_prefix">Table Prefix (optional)</label>
+                        <input type="text" id="table_prefix" name="table_prefix" value="vtu_" placeholder="e.g., vtu_">
+                        <p class="note">Prevents conflicts if sharing the database</p>
+                    </div>
+
+                    <div class="btn-group">
+                        <a href="stage1.php" class="btn btn-secondary">← Back</a>
+                        <button type="submit" class="btn btn-primary">Next: Create Admin Account →</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

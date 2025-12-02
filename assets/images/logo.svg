@@ -1,0 +1,7 @@
+<!-- assets/images/logo.svg -->
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="12" fill="#4361ee"/>
+  <path d="M16 24L22 18L28 24L34 18V30L28 24L22 30L16 24Z" fill="white" stroke="white" stroke-width="2"/>
+  <circle cx="28" cy="18" r="2" fill="white"/>
+  <circle cx="22" cy="30" r="2" fill="white"/>
+</svg>
