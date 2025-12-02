@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'username' => $username,
                 'email' => $email
             ];
-            header("Refresh: 2; url=stage4.php");
+            header("Location: stage4.php");
             exit();
 
         } catch (PDOException $e) {

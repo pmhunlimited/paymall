@@ -1,8 +1,13 @@
 <?php
 session_start();
-// In installer/stage4.php - REPLACE the config generation section
 
-$db = $_SESSION['db_config'] ?? [];
+// Safeguard: Ensure we have database config from stage 2
+if (empty($_SESSION['db_config']) || !isset($_SESSION['stage3_passed'])) {
+    header("Location: stage2.php");
+    exit();
+}
+
+$db = $_SESSION['db_config'];
 
 // === Generate config/app.php ===
 $config_content = "<?php\n";
