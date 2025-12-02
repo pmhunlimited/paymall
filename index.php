@@ -1,6 +1,8 @@
 <?php
 // index.php
 
+require_once __DIR__ . '/config/settings.php';
+
 // Check if installed
 $config_file = __DIR__ . '/config/app.php';
 if (!file_exists($config_file) || !(@include $config_file)['installed']) {
