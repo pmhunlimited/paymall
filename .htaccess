@@ -1,0 +1,50 @@
+# .htaccess (place in ROOT directory)
+
+# === Security Hardening ===
+# Block access to sensitive directories
+<FilesMatch "\.(env|log|sql|db|bak|config|php|ini)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# Block config/ and logs/ directories
+<Directory "config">
+    Require all denied
+</Directory>
+<Directory "logs">
+    Require all denied
+</Directory>
+#<Directory "installer">
+#    Require all denied
+#</Directory>
+
+# Prevent directory listing
+Options -Indexes
+
+# Protect against XSS
+Header set X-XSS-Protection "1; mode=block"
+Header set X-Content-Type-Options "nosniff"
+Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+# === Force HTTPS (uncomment in production) ===
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# === URL Rewriting ===
+RewriteEngine On
+
+# Allow access to assets
+RewriteRule ^(assets|uploads) - [L]
+
+# Route API/webhooks
+RewriteRule ^webhooks/([a-z]+)\.php$ webhooks/$1.php [L]
+
+# Route user/admin pages
+RewriteRule ^admin/([a-z_]+)\.php$ admin/$1.php [L]
+RewriteRule ^user/([a-z_]+)\.php$ user/$1.php [L]
+
+# Fallback to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
