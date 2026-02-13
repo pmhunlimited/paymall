@@ -1,5 +1,13 @@
 <?php
-// In installer/stage4.php - REPLACE the config generation section
+session_start();
+
+// Safeguard: Ensure we have database config from stage 2
+if (empty($_SESSION['db_config']) || !isset($_SESSION['stage3_passed'])) {
+    header("Location: stage2.php");
+    exit();
+}
+
+$db = $_SESSION['db_config'];
 
 // === Generate config/app.php ===
 $config_content = "<?php\n";
@@ -56,20 +64,59 @@ if (file_put_contents($dotenv_path, $dotenv_content) !== false) {
 } else {
     $env_created = false;
 }
-?>
 
-<!-- In the success HTML section -->
-<div class="security-note">
-    <h3>🔐 Security Recommendations:</h3>
-    <ul style="text-align: left; padding-left: 1.5rem; margin-top: 0.5rem;">
-        <li>Go to <strong>Admin Dashboard → API Manager</strong> and enter your MTN, Flutterwave, and Paystack keys</li>
-        <li>Set up email (SMTP) in <strong>Settings → Email</strong></li>
-        <?php if ($env_created): ?>
-        <li>✅ <code>.env</code> file created with secure defaults</li>
-        <li>🔒 Run: <code>chmod 600 .env</code> to secure it</li>
-        <?php else: ?>
-        <li>⚠️ Failed to create <code>.env</code> — create manually from <code>.env.example</code></li>
-        <?php endif; ?>
-        <li>🚫 Delete the <code>/installer/</code> folder for security</li>
-    </ul>
-</div>
+// === Finalize Installation ===
+// Create a .installed lock file to prevent re-running the installer
+file_put_contents(__DIR__ . '/.installed', 'Installation completed on ' . date('Y-m-d H:i:s'));
+
+// Clear the session to allow for a fresh start if needed
+session_destroy();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTU Installer — Installation Complete</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #4361ee; --success: #06d6a0; --warning: #ffd166; --danger: #ef476f; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: #333; padding: 1.5rem; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); overflow: hidden; text-align: center; }
+        .header { background: var(--success); color: white; padding: 2rem; }
+        .header h2 { font-weight: 600; font-size: 1.8rem; }
+        .content { padding: 2.5rem; }
+        .btn { display: inline-block; margin-top: 1.5rem; background: var(--primary); color: white; padding: 0.8rem 1.5rem; text-decoration: none; border-radius: 10px; font-weight: 600; }
+        .security-note { margin-top: 2rem; padding: 1rem; background: #fff8e6; border-radius: 8px; border-left: 4px solid #ffd166; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <h2>✅ Installation Complete!</h2>
+            </div>
+            <div class="content">
+                <p>Congratulations! Your new VTU site is ready.</p>
+                <a href="../admin/" class="btn">Go to Admin Login</a>
+                <div class="security-note">
+                    <h3>🔐 Security Recommendations:</h3>
+                    <ul style="text-align: left; padding-left: 1.5rem; margin-top: 0.5rem;">
+                        <li>Go to <strong>Admin Dashboard → API Manager</strong> and enter your MTN, Flutterwave, and Paystack keys</li>
+                        <li>Set up email (SMTP) in <strong>Settings → Email</strong></li>
+                        <?php if ($env_created): ?>
+                        <li>✅ <code>.env</code> file created with secure defaults</li>
+                        <li>🔒 Run: <code>chmod 600 .env</code> to secure it</li>
+                        <?php else: ?>
+                        <li>⚠️ Failed to create <code>.env</code> — create manually from <code>.env.example</code></li>
+                        <?php endif; ?>
+                        <li>🚫 Delete the <code>/installer/</code> folder for security</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,50 @@
+# .htaccess (place in ROOT directory)
+
+# === Security Hardening ===
+# Prevent directory listing
+Options -Indexes
+
+# Block access to sensitive files and directories by URL
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule \.env$ - [F,L]
+    RewriteRule \.(log|sql|db|bak|ini)$ - [F,L]
+    RewriteRule ^config/ - [F,L]
+    RewriteRule ^logs/ - [F,L]
+    # The installer directory is temporarily allowed. DELETE IT AFTER INSTALLATION.
+    # RewriteRule ^installer/ - [F,L]
+</IfModule>
+
+# Protect against XSS and other attacks
+<IfModule mod_headers.c>
+    Header set X-XSS-Protection "1; mode=block"
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# === Force HTTPS (uncomment in production) ===
+# <IfModule mod_rewrite.c>
+#     RewriteEngine On
+#     RewriteCond %{HTTPS} off
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>
+
+# === URL Rewriting ===
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Allow direct access to existing files in assets/ and uploads/
+    RewriteCond %{REQUEST_URI} ^/(assets|uploads)/
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Route API/webhooks, user/admin pages to their respective PHP files
+    RewriteRule ^webhooks/([a-z_]+)$ webhooks/$1.php [L]
+    RewriteRule ^admin/([a-z_]+)$ admin/$1.php [L]
+    RewriteRule ^user/([a-z_]+)$ user/$1.php [L]
+
+    # Fallback for all other requests to the main index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>

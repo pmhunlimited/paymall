@@ -1,16 +1,19 @@
 <?php
 // index.php
 
+// These must be included first in this order.
+require_once __DIR__ . '/config/db.php';
+require_once __DIR__ . '/config/settings.php';
+require_once __DIR__ . '/includes/functions.php';
+
 // Check if installed
-$config_file = __DIR__ . '/config/app.php';
-if (!file_exists($config_file) || !(@include $config_file)['installed']) {
+if (!file_exists(__DIR__ . '/config/app.php') || !(@include __DIR__ . '/config/app.php')['installed']) {
     header("Location: installer/");
     exit();
 }
 
-// Redirect based on login status
-session_start();
-if (isset($_SESSION['user_id'])) {
+// Redirect if already logged in
+if (auth()->isLoggedIn()) {
     if ($_SESSION['is_admin'] ?? false) {
         header("Location: admin/index.php");
     } else {
@@ -27,6 +30,7 @@ if (isset($_SESSION['user_id'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars(setting('site_name', 'VTU Fintech')) ?> — Instant Data Bundles</title>
+    <link rel="stylesheet" href="assets/css/main.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }

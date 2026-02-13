@@ -1,7 +1,8 @@
 <?php
 session_start();
-require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/functions.php';
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/settings.php';
 
 // Enforce admin login
 if (!auth()->isLoggedIn() || !($_SESSION['is_admin'] ?? false)) {

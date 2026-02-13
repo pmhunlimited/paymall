@@ -59,7 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $schema_sql = file_get_contents($schema_file);
             $schema_sql = str_replace('{PREFIX}', $prefix, $schema_sql);
-            $pdo->exec($schema_sql);
+
+            // Execute the schema query with error checking
+            $result = $pdo->exec($schema_sql);
+            if ($result === false) {
+                $errorInfo = $pdo->errorInfo();
+                throw new Exception("Failed to execute database schema. SQL ERROR: " . ($errorInfo[2] ?? 'Unknown error'));
+            }
 
             // Insert default settings
             $default_prices = json_encode([
